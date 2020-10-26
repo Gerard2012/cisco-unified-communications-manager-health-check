@@ -209,6 +209,12 @@ def run_and_email():
     s.send_message(msg)
     s.quit()
 
+    del nodes_not_responding[:]
+    del nodes_high_uptime[:]
+    del nodes_stpd_srvs[:]
+    del nodes_expiring_certs[:]
+    del nodes_failed_backup[:]
+
     logging.info('## {} - run_and_email() -- ALL CHECKS COMPLETE'.format(__name__))
 
 
