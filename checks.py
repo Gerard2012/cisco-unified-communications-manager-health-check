@@ -52,7 +52,7 @@ def core_checks():
 
         logging.info('## {} - _core_checks({}) -- STARTING CHECKS'.format(__name__, node))
 
-        ## Returns the username and password corespoding to the node from the csv.
+        ## Returns the username and password corresponding to the node from the csv.
         with open('infrastructure.csv') as f:
             for row in csv.DictReader(f):
                 if node == row['hostname']:
