@@ -11,6 +11,7 @@ import logging
 import smtplib
 from email.message import EmailMessage
 from ucm_cli import SSHConnect, parse_resp
+from email_settings import smtp_server, from_email, to_email, cc_email_1, cc_email_2
 
 
 ##############################################################################################
@@ -201,11 +202,11 @@ def run_and_email():
         msg.set_content(rf.read())
 
     msg['Subject'] = f'UC Morning Checks - {today}'
-    msg['From'] = 'UC.Checks@allenovery.com'
-    msg['To'] = 'NetworkOperations@AllenOvery.com'
-    msg['Cc'] = 'gerard.mcgrattan@allenovery.com, Reynolds, James.Reynolds@AllenOvery.com'
+    msg['From'] = f'{from_email}'
+    msg['To'] = f'{to_email}'
+    msg['Cc'] = f'{cc_email_1}, {cc_email_2}'
 
-    s = smtplib.SMTP('smtpinternal.ln.omnia.aoglobal.com')
+    s = smtplib.SMTP(f'{smtp_server}')
     s.send_message(msg)
     s.quit()
 
