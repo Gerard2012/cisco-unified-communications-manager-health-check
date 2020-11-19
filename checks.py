@@ -116,7 +116,7 @@ def core_checks():
 
             except Exception as e:
                 logging.debug('## {} - SSHConnect("{}").get_backup() -- EXCEPTION -- {}'.format(__name__, node, e))
-                nodes_failed_backup.append(node + ': No backup data. Check DRF service.)
+                nodes_failed_backup.append(node + ': No backup data. Check DRF service.')
 
 
         except Exception as e:
