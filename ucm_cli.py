@@ -8,6 +8,8 @@ from datetime import datetime
 import re
 import logging
 
+test_data = ['Unable to connect to Master Agent host: NYVMITEL01, Port: 4040. This may be due to Master or Local Agent being down.', 'drfCliMsg:  No history data is available']
+
 
 ##############################################################################################
 # Functions
@@ -284,9 +286,10 @@ class SSHConnect:
 
         """
 
-        resp = self.run_cmd('utils disaster_recovery history Backup')
+        #resp = self.run_cmd('utils disaster_recovery history Backup')
+        resp = test_data
         logging.debug('## {} - {}.get_backup() -- RESP == {}'.format(__name__, self, resp))
-        backup_list = [elem.split(': ') for elem in resp if '.tar' in elem or 'TAR file not created' in elem]
+        backup_list = [elem for elem in resp if '.tar' in elem or 'TAR file not created' in elem]
         today = datetime.now()
 
         latest_backup_status = 'ERROR'
@@ -296,6 +299,7 @@ class SSHConnect:
         def _get_backup():
 
             latest_backup = str(backup_list.pop()).split()
+
 
             while 'SUCCESS' in latest_backup:
                 latest_backup[3] = self.months[latest_backup[3]]
@@ -309,6 +313,7 @@ class SSHConnect:
 
             else:
                 return _get_backup()
+
 
         return _get_backup()
 
@@ -330,4 +335,10 @@ class SSHConnect:
 
 if __name__ == '__main__':
 
-    pass
+    format = "%(asctime)s: %(message)s"
+    logging.basicConfig(format=format, level=logging.DEBUG, datefmt="%H:%M:%S")
+
+    ucm = SSHConnect('10.120.215.51','administrator','1PTpr0d')
+    ucm.init_connect()
+    print(ucm.get_backup())
+    ucm.close_ssh
