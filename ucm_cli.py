@@ -335,10 +335,4 @@ class SSHConnect:
 
 if __name__ == '__main__':
 
-    format = "%(asctime)s: %(message)s"
-    logging.basicConfig(format=format, level=logging.DEBUG, datefmt="%H:%M:%S")
-
-    ucm = SSHConnect('10.120.215.51','administrator','1PTpr0d')
-    ucm.init_connect()
-    print(ucm.get_backup())
-    ucm.close_ssh
+    pass
