@@ -286,8 +286,7 @@ class SSHConnect:
 
         """
 
-        #resp = self.run_cmd('utils disaster_recovery history Backup')
-        resp = test_data
+        resp = self.run_cmd('utils disaster_recovery history Backup')
         logging.debug('## {} - {}.get_backup() -- RESP == {}'.format(__name__, self, resp))
         backup_list = [elem for elem in resp if '.tar' in elem or 'TAR file not created' in elem]
         today = datetime.now()
