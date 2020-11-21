@@ -294,13 +294,26 @@ class SSHConnect:
         latest_backup_status = 'ERROR'
 
         if 'SUCCESS' in str(backup_list[-1]): latest_backup_status = 'SUCCESS'
+        logging.debug('## {} - {}.get_backup() -- latest_backup_status == {}'.format(__name__, self, latest_backup_status))
 
         def _get_backup():
 
+            logging.debug('## {} - {}._get_backup() -- backup_list == {}'.format(__name__, self, backup_list))
+
             latest_backup = str(backup_list.pop()).split()
 
+            logging.debug('## {} - {}._get_backup() -- latest_backup == {} {}'.format(__name__, self, len(latest_backup), latest_backup))
+
+            ## Seperates year and status in the backup history if these have been merged in output due to long timezone, i.e. GMT-02:00
+            if len(latest_backup) == 12 or len(latest_backup) == 13:
+                year_and_status = list(latest_backup.pop(7))
+                year = ''.join(year_and_status[0:4])
+                status = ''.join(year_and_status[4:])
+                latest_backup.insert(7, year)
+                latest_backup.insert(8, status)
 
             while 'SUCCESS' in latest_backup:
+                logging.debug('## {} - {}._get_backup() -- WHILE LOOP -- latest_backup = {}'.format(__name__, self, latest_backup))
                 latest_backup[3] = self.months[latest_backup[3]]
                 last_successful_backup = str(latest_backup[4] + '/' + latest_backup[3] + '/' + latest_backup[7])
                 last_successful_backup_strptime = datetime.strptime(last_successful_backup, '%d/%m/%Y')
@@ -333,5 +346,8 @@ class SSHConnect:
 ##############################################################################################
 
 if __name__ == '__main__':
+
+    format = "%(asctime)s: %(message)s"
+    logging.basicConfig(format=format, level=logging.DEBUG, datefmt="%H:%M:%S")
 
     pass

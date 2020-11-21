@@ -85,6 +85,7 @@ def core_checks():
 
             except Exception as e:
                 logging.debug('## {} - SSHConnect("{}").get_uptime() -- EXCEPTION -- {}'.format(__name__, node, e))
+                nodes_high_uptime.append(node + ': An exception occurred. Check node manually')
 
             try:
                 stopped_srvs = conn.get_stopped_srvs()
@@ -95,6 +96,7 @@ def core_checks():
 
             except Exception as e:
                 logging.debug('## {} - SSHConnect("{}").get_stopped_srvs() -- EXCEPTION -- {}'.format(__name__, node, e))
+                nodes_stpd_srvs.append(node + ': An exception occurred. Check node manually')
 
             try:
                 certs = conn.get_certs()
@@ -106,6 +108,7 @@ def core_checks():
 
             except Exception as e:
                 logging.debug('## {} - SSHConnect("{}").get_certs() -- EXCEPTION -- {}'.format(__name__, node, e))
+                nodes_expiring_certs.append(node + ': An exception occurred. Check node manually')
 
             try:
                 backups = conn.get_backup()
@@ -125,7 +128,7 @@ def core_checks():
 
         try:
             conn.close_ssh()
-            logging.debug('## {} - SSHConnect("{}").close()'.format(__name__, node))
+            logging.debug('## {} - SSHConnect("{}").close_ssh()'.format(__name__, node))
 
         except Exception as e:
                 logging.debug('## {} - SSHConnect("{}").close_ssh() -- EXCEPTION -- {}'.format(__name__, node, e))
