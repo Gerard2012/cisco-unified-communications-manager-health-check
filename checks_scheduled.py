@@ -9,8 +9,10 @@ from datetime import date
 import schedule
 import logging
 import smtplib
+import os
 from email.message import EmailMessage
 from ucm_cli import SSHConnect, parse_resp
+from exp_cli import SSHConnectExp, parse_resp_exp
 from email_settings import smtp_server, from_email, to_email, cc_email_1, cc_email_2
 
 
@@ -27,6 +29,8 @@ nodes_stpd_srvs = []
 nodes_expiring_certs = []
 
 nodes_failed_backup = []
+
+exp_alarms = []
 
 
 ##############################################################################################
@@ -119,7 +123,7 @@ def core_checks():
 
             except Exception as e:
                 logging.debug('## {} - SSHConnect("{}").get_backup() -- EXCEPTION -- {}'.format(__name__, node, e))
-                nodes_failed_backup.append(node + ': No backup data. Check DRF service.')
+                nodes_failed_backup.append(node + ': No DRF data available. Check node manually. Error = ' + str(e))
 
 
         except Exception as e:
@@ -133,18 +137,72 @@ def core_checks():
         except Exception as e:
                 logging.debug('## {} - SSHConnect("{}").close_ssh() -- EXCEPTION -- {}'.format(__name__, node, e))
 
-        logging.info('## {} - _core_checks({}) -- CHECKS COMPLETE'.format(__name__, node))
+        logging.info('## {} - _core_checks({}) -- UCM CHECKS COMPLETE'.format(__name__, node))
 
 
     logging.debug('## {} - core_checks() -- ENTERING FUNC'.format(__name__))
 
     ## Create a list of server hostnames from the csv.
     with open('infrastructure.csv') as f:
-        hostnames = [row['hostname'] for row in csv.DictReader(f) if 'cte' not in row['region']]
+        hostnames = [row['hostname'] for row in csv.DictReader(f) if 'cte' not in row['region'] and 'exp' not in row['device']]
 
     ## Map each server in the hostnames[] list to the inner _core_checks() function and create a thread for it.
     with concurrent.futures.ThreadPoolExecutor(max_workers=10) as ex:
         results = [ex.map(_core_checks, hostnames)]
+
+        for f in results:
+
+            return f
+
+
+##############################################################################################
+
+def exp_checks():
+
+    def _exp_checks(node):
+
+        with open('infrastructure.csv') as f:
+            for row in csv.DictReader(f):
+                if node == row['hostname']:
+                    username, password = row['username'], row['password']
+
+        try:
+            conn = SSHConnectExp(node, username, password)
+            logging.debug('## {} - SSHConnectExp("{}")'.format(__name__, node))
+
+            conn.init_connect()
+            logging.debug('## {} - SSHConnectExp("{}").init_connect()'.format(__name__, node))
+
+            try:
+                if len(conn.run_cmd('xstatus alarm')) > 5:
+                    exp_alarm_resp = node, conn.run_cmd('xstatus alarm')
+                    exp_alarms.append(exp_alarm_resp)
+                logging.debug('## {} - SSHConnectExp("{}").run_cmd()'.format(__name__, node))
+
+            except Exception as e:
+                logging.debug('## {} - SSHConnectExp("{}").run_cmd() -- EXCEPTION -- {}'.format(__name__, node, e))
+
+        except Exception as e:
+            logging.debug('## {} - SSHConnect("{}") -- EXCEPTION -- {}'.format(__name__, node, e))
+            nodes_not_responding.append(node + ': ' + str(e))
+
+        try:
+            conn.close_ssh()
+            logging.debug('## {} - SSHConnectExp("{}").close_ssh()'.format(__name__, node))
+
+        except Exception as e:
+                logging.debug('## {} - SSHConnectExp("{}").close_ssh() -- EXCEPTION -- {}'.format(__name__, node, e))
+
+        logging.info('## {} - _core_checks({}) -- EXPRESSWAY CHECKS COMPLETE'.format(__name__, node))
+
+
+    logging.debug('## {} - exp_checks() -- ENTERING FUNC'.format(__name__))
+
+    with open('infrastructure.csv') as f:
+        hostnames = [row['hostname'] for row in csv.DictReader(f) if 'exp' in row['device']]
+
+    with concurrent.futures.ThreadPoolExecutor(max_workers=10) as ex:
+        results = [ex.map(_exp_checks, hostnames)]
 
         for f in results:
 
@@ -164,6 +222,8 @@ def run_and_email():
 
     core_checks()
 
+    exp_checks()
+
     today = date.today()
 
     results_file = f'uc_checks_{today}.txt'
@@ -173,32 +233,42 @@ def run_and_email():
         f.write('NODES NOT RESPONDING\n')
         f.write('='*len('NODES NOT RESPONDING'))
         f.write('\n')
-        for elem in nodes_not_responding: f.write(str(elem) + '\n')
+        for elem in sorted(nodes_not_responding): f.write(str(elem) + '\n')
         f.write('\n\n')
 
-        f.write('NODES WITH STOPPED SERVICES\n')
-        f.write('='*len('NODES WITH STOPPED SERVICES'))
+        f.write('UCM NODES WITH STOPPED SERVICES\n')
+        f.write('='*len('UCM NODES WITH STOPPED SERVICES'))
         f.write('\n')
-        for elem in nodes_stpd_srvs: f.write(str(elem) + '\n')
+        for elem in sorted(nodes_stpd_srvs): f.write(str(elem) + '\n')
         f.write('\n\n')
 
-        f.write('NODES WITH EXPIRING CERTS\n')
-        f.write('='*len('NODES WITH EXPIRING CERTS'))
+        f.write('UCM NODES WITH EXPIRING CERTS\n')
+        f.write('='*len('UCM NODES WITH EXPIRING CERTS'))
         f.write('\n')
-        for elem in nodes_expiring_certs: f.write(str(elem) + '\n')
+        for elem in sorted(nodes_expiring_certs): f.write(str(elem) + '\n')
         f.write('\n\n')
 
-        f.write('NODES WITH FAILED BACKUPS\n')
-        f.write('='*len('NODES WITH FAILED BACKUPS'))
+        f.write('UCM NODES WITH FAILED BACKUPS\n')
+        f.write('='*len('UCM NODES WITH FAILED BACKUPS'))
         f.write('\n')
-        for elem in nodes_failed_backup: f.write(str(elem) + '\n')
+        for elem in sorted(nodes_failed_backup): f.write(str(elem) + '\n')
         f.write('\n\n')
 
-        f.write('NODES WITH UPTIME >180 DAYS\n')
-        f.write('='*len('NODES WITH UPTIME >180 DAYS'))
+        f.write('UCM NODES WITH UPTIME >180 DAYS\n')
+        f.write('='*len('UCM NODES WITH UPTIME >180 DAYS'))
         f.write('\n')
-        for elem in nodes_high_uptime: f.write(str(elem) + '\n')
+        for elem in sorted(nodes_high_uptime): f.write(str(elem) + '\n')
         f.write('\n\n')
+
+        f.write('EXPRESSWAY NODES WITH ALARMS\n')
+        f.write('='*len('EXPRESSWAY NODES WITH ALARMS'))
+        f.write('\n')
+        for elem in sorted(exp_alarms):
+            f.write(elem[0] + ':\n')
+            f.write('*'*len(elem[0]) + '\n')
+            for elem2 in elem[1][2:-5]:
+                f.write(elem2 + '\n')
+            f.write('\n\n')
 
 
     with open(results_file) as rf:
@@ -208,7 +278,8 @@ def run_and_email():
     msg['Subject'] = f'UC Morning Checks - {today}'
     msg['From'] = f'{from_email}'
     msg['To'] = f'{to_email}'
-    msg['Cc'] = f'{cc_email_1}, {cc_email_2}'
+    msg['Bcc'] = f'{cc_email_1}, {cc_email_2}'
+    #msg['To'] = f'{cc_email_1}'
 
     s = smtplib.SMTP(f'{smtp_server}')
     s.send_message(msg)
@@ -219,6 +290,11 @@ def run_and_email():
     del nodes_stpd_srvs[:]
     del nodes_expiring_certs[:]
     del nodes_failed_backup[:]
+    del exp_alarms[:]
+    logging.info('## {} - run_and_email() -- RESULTS LISTS CLEARED'.format(__name__))
+
+    os.remove(results_file)
+    logging.info('## {} - run_and_email() -- RESULTS FILE REMOVED'.format(__name__))
 
     logging.info('## {} - run_and_email() -- ALL CHECKS COMPLETE'.format(__name__))
 
@@ -251,3 +327,8 @@ if __name__ == '__main__':
     logging.basicConfig(format=format, level=logging.INFO, datefmt="%H:%M:%S")
 
     scheduler('07:30')
+    #run_and_email()
+
+
+
+

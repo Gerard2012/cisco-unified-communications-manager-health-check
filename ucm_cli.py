@@ -136,6 +136,7 @@ class SSHConnect:
 
                 if 'admin:' not in buffer and max_recursion_depth <= 10:
                     logging.debug('## {} - {}.run_cmd("{}") -- PROMPT == {}'.format(__name__, self, cmd, prompt))
+                    recursion_depth += 1
                     return _run_cmd(buffer)
 
                 elif 'admin:' not in buffer and max_recursion_depth > 10:
