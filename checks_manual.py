@@ -60,16 +60,17 @@ def core_checks():
         with open('infrastructure.csv') as f:
             for row in csv.DictReader(f):
                 if node == row['hostname']:
-                    username, password = row['username'], row['password']
+                    role, username, password = row['role'], row['username'], row['password']
 
         ## Create the SSHConnect() instance, call its methods and records servers that fail the conditions to the
         ## 5 lists at the top of the script.
         try:
             conn = SSHConnect(node, username, password)
-            logging.debug('## {} - SSHConnect("{}")'.format(__name__, node))
+            logging.info('## {} - SSHConnect("{}")'.format(__name__, node))
 
             conn.init_connect()
             logging.debug('## {} - SSHConnect("{}").init_connect()'.format(__name__, node))
+
 
             try:
                 conn.run_cmd('set cli pagination off')
@@ -77,6 +78,7 @@ def core_checks():
 
             except Exception as e:
                 logging.debug('## {} - SSHConnect("{}").run_cmd() -- EXCEPTION -- {}'.format(__name__, node, e))
+
 
             try:
                 uptime, unit = conn.get_uptime()
@@ -90,6 +92,7 @@ def core_checks():
                 logging.debug('## {} - SSHConnect("{}").get_uptime() -- EXCEPTION -- {}'.format(__name__, node, e))
                 nodes_high_uptime.append(node + ': An exception occurred. Check node manually')
 
+
             try:
                 stopped_srvs = conn.get_stopped_srvs()
                 logging.debug('## {} - SSHConnect("{}").get_stopped_srvs() -- {}'.format(__name__, node, stopped_srvs))
@@ -100,6 +103,7 @@ def core_checks():
             except Exception as e:
                 logging.debug('## {} - SSHConnect("{}").get_stopped_srvs() -- EXCEPTION -- {}'.format(__name__, node, e))
                 nodes_stpd_srvs.append(node + ': An exception occurred. Check node manually')
+
 
             try:
                 certs = conn.get_certs()
@@ -113,16 +117,21 @@ def core_checks():
                 logging.debug('## {} - SSHConnect("{}").get_certs() -- EXCEPTION -- {}'.format(__name__, node, e))
                 nodes_expiring_certs.append(node + ': An exception occurred. Check node manually')
 
-            try:
-                backups = conn.get_backup()
-                logging.debug('## {} - SSHConnect("{}").get_backup() -- {}'.format(__name__, node, backups))
 
-                if 'ERROR' in backups[0]:
-                    nodes_failed_backup.append(node + ': Last successful backp = ' + str(backups[1]) + ', Days since last backup = ' + str(backups[2]))
+            if not role:
+                logging.debug('## {} - SSHConnect("{}").get_backup() -- NOT PUBLISHER -- SKIPPING'.format(__name__, node))
 
-            except Exception as e:
-                logging.debug('## {} - SSHConnect("{}").get_backup() -- EXCEPTION -- {}'.format(__name__, node, e))
-                nodes_failed_backup.append(node + ': No DRF data available. Check node manually. Error = ' + str(e))
+            else:
+                try:
+                    backups = conn.get_backup()
+                    logging.debug('## {} - SSHConnect("{}").get_backup() -- {}'.format(__name__, node, backups))
+
+                    if 'ERROR' in backups[0]:
+                        nodes_failed_backup.append(node + ': Last successful backp = ' + str(backups[1]) + ', Days since last backup = ' + str(backups[2]))
+
+                except Exception as e:
+                    logging.debug('## {} - SSHConnect("{}").get_backup() -- EXCEPTION -- {}'.format(__name__, node, e))
+                    nodes_failed_backup.append(node + ': No DRF data available. Check node manually. Error = ' + str(e))
 
 
         except Exception as e:
