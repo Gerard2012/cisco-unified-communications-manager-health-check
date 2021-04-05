@@ -292,9 +292,9 @@ def run_and_email():
 
     msg['Subject'] = f'UC Morning Checks - {today}'
     msg['From'] = f'{from_email}'
-    #msg['To'] = f'{to_email}'
-    #msg['Bcc'] = f'{cc_email_1}, {cc_email_2}'
-    msg['To'] = f'{cc_email_1}'
+    msg['To'] = f'{to_email}'
+    msg['Bcc'] = f'{cc_email_1}, {cc_email_2}'
+    #msg['To'] = f'{cc_email_1}'
 
     s = smtplib.SMTP(f'{smtp_server}')
     s.send_message(msg)
