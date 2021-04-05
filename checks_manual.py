@@ -14,6 +14,7 @@ from email.message import EmailMessage
 from ucm_cli import SSHConnect, parse_resp
 from exp_cli import SSHConnectExp, parse_resp_exp
 from email_settings import smtp_server, from_email, to_email, cc_email_1, cc_email_2
+from exp_gui import expressway_alarm_cleanup
 
 
 ##############################################################################################
@@ -175,6 +176,12 @@ def exp_checks():
                     username, password = row['username'], row['password']
 
         try:
+            expressway_alarm_cleanup(node, username, password)
+
+        except Exception as e:
+            logging.debug('## {} - expressway_alarm_cleanup("{}") -- EXCEPTION -- {}'.format(__name__, node, e))
+
+        try:
             conn = SSHConnectExp(node, username, password)
             logging.debug('## {} - SSHConnectExp("{}")'.format(__name__, node))
 
@@ -209,7 +216,7 @@ def exp_checks():
     with open('infrastructure.csv') as f:
         hostnames = [row['hostname'] for row in csv.DictReader(f) if 'exp' in row['device']]
 
-    with concurrent.futures.ThreadPoolExecutor(max_workers=10) as ex:
+    with concurrent.futures.ThreadPoolExecutor(max_workers=5) as ex:
         results = [ex.map(_exp_checks, hostnames)]
 
         for f in results:
@@ -335,7 +342,3 @@ if __name__ == '__main__':
     logging.basicConfig(format=format, level=logging.INFO, datefmt="%H:%M:%S")
 
     run_and_email()
-
-
-
-
